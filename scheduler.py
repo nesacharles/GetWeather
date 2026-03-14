@@ -1,7 +1,7 @@
 """Scheduler that invokes the ADK weather agent every hour."""
- 
+
+import argparse
 import asyncio
-import os
 from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -21,8 +21,8 @@ APP_NAME = "weather_app"
 USER_ID = "scheduler"
 
 
-async def run_agent_once():
-    """Run the weather agent a single time and print the result."""
+async def run_agent_once(city: str, state: str):
+    """Run the weather agent a single time for the given city/state."""
     session_service = InMemorySessionService()
 
     runner = Runner(
@@ -40,7 +40,7 @@ async def run_agent_once():
         role="user",
         parts=[
             types.Part(
-                text="Fetch the current weather for Parker, Colorado and store it in the database."
+                text=f"Fetch the current weather for {city}, {state} and store it in the database."
             )
         ],
     )
@@ -60,26 +60,26 @@ async def run_agent_once():
     print(f"[{timestamp}] Agent response: {final_response}")
 
 
-async def main():
+async def main(city: str, state: str):
     """Initialize DB and start the hourly scheduler."""
     init_db()
 
     # Run once immediately on startup
-    print("Running initial weather fetch...")
-    await run_agent_once()
+    print(f"Running initial weather fetch for {city}, {state}...")
+    await run_agent_once(city, state)
 
     # Schedule every 1 hour
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         run_agent_once,
         trigger=IntervalTrigger(hours=1),
+        args=[city, state],
         id="weather_hourly",
-        name="Fetch weather every hour",
+        name=f"Fetch weather for {city}, {state} every hour",
         replace_existing=True,
     )
-
     scheduler.start()
-    print("Scheduler started — fetching weather every 1 hour. Press Ctrl+C to stop.")
+    print(f"Scheduler started — fetching weather for {city}, {state} every 1 hour. Press Ctrl+C to stop.")
 
     # Keep the event loop running
     try:
@@ -91,4 +91,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description="Schedule hourly weather fetches.")
+    parser.add_argument("--city", required=True, help="City name (e.g. Denver)")
+    parser.add_argument("--state", required=True, help="State name (e.g. Colorado)")
+    args = parser.parse_args()
+    asyncio.run(main(args.city, args.state))

@@ -2,27 +2,44 @@
 
 import httpx
 from db import insert_weather_record
- 
-# Parker, Colorado coordinates
-PARKER_LAT = 39.5186
-PARKER_LON = -104.7614
+
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 
 
-def get_weather(city: str = "Parker", state: str = "Colorado") -> dict:
-    """Fetch the current weather for Parker, Colorado from the Open-Meteo API
+def _geocode(city: str, state: str) -> tuple[float, float]:
+    """Resolve a city/state to (latitude, longitude) via the Open-Meteo geocoding API."""
+    response = httpx.get(
+        GEOCODING_URL,
+        params={"name": f"{city} {state}", "count": 1, "language": "en", "format": "json"},
+        timeout=15,
+    )
+    response.raise_for_status()
+    results = response.json().get("results")
+    if not results:
+        raise ValueError(f"Could not geocode '{city}, {state}'.")
+    return results[0]["latitude"], results[0]["longitude"]
+
+
+def get_weather(city: str, state: str) -> dict:
+    """Fetch the current weather for the given city and state from the Open-Meteo API
     and store it in the PostgreSQL database.
 
     Args:
-        city: The city name (default: Parker).
-        state: The state name (default: Colorado).
+        city: The city name (e.g. 'Denver').
+        state: The state name (e.g. 'Colorado').
 
     Returns:
         A dict with the current temperature and the stored database record.
     """
+    try:
+        lat, lon = _geocode(city, state)
+    except ValueError as exc:
+        return {"error": str(exc)}
+
     params = {
-        "latitude": PARKER_LAT,
-        "longitude": PARKER_LON,
+        "latitude": lat,
+        "longitude": lon,
         "current_weather": "true",
         "temperature_unit": "fahrenheit",
     }
