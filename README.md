@@ -3,7 +3,7 @@
 A Google ADK agent that fetches current weather data for **Parker, Colorado** using the [Open-Meteo API](https://open-meteo.com/) and stores it in a PostgreSQL table every hour.
 
 ## Project Structure
-
+ 
 ```
 GetWeather/
 ├── agent.py          # ADK agent definition

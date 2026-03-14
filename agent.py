@@ -9,7 +9,7 @@ from google.adk.agents import Agent
 from tools import get_weather
 
 weather_agent = Agent(
-    name="weather_agent",
+    name="weather_agent", 
     model="gemini-2.5-flash-lite",
     description="An agent that retrieves current weather data for Parker, Colorado and stores it in a PostgreSQL database.",
     instruction=(

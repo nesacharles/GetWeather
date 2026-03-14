@@ -2,7 +2,7 @@
 
 import httpx
 from db import insert_weather_record
-
+ 
 # Parker, Colorado coordinates
 PARKER_LAT = 39.5186
 PARKER_LON = -104.7614
