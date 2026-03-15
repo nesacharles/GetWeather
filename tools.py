@@ -1,5 +1,7 @@
 """Tools exposed to the ADK weather agent."""
 
+from typing import Tuple
+
 import httpx
 from db import insert_weather_record
 
@@ -7,17 +9,25 @@ OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 
 
-def _geocode(city: str, state: str) -> tuple[float, float]:
+def _geocode(city: str, state: str) -> Tuple[float, float]:
     """Resolve a city/state to (latitude, longitude) via the Open-Meteo geocoding API."""
     response = httpx.get(
         GEOCODING_URL,
-        params={"name": f"{city} {state}", "count": 1, "language": "en", "format": "json"},
+        params={"name": city, "count": 10, "language": "en", "format": "json"},
         timeout=15,
     )
     response.raise_for_status()
-    results = response.json().get("results")
+    results = response.json().get("results", [])
     if not results:
         raise ValueError(f"Could not geocode '{city}, {state}'.")
+
+    # Try to match by state (admin1 field), fall back to first US result, then first overall
+    for r in results:
+        if r.get("admin1", "").lower() == state.lower() and r.get("country_code") == "US":
+            return r["latitude"], r["longitude"]
+    for r in results:
+        if r.get("country_code") == "US":
+            return r["latitude"], r["longitude"]
     return results[0]["latitude"], results[0]["longitude"]
 
 
